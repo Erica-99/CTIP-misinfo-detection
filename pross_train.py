@@ -1,4 +1,6 @@
-# train.py
+# Dinuka's original script for training classifiers. Portions of code were recycled into the main training notebook.
+# Simplified and made consistent with the rest of the codebase by Erica.
+
 import csv
 csv.field_size_limit(10**9)
 
@@ -18,7 +20,7 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
 # =======================
-# CONFIG — choose input mode
+# CONFIG
 # =======================
 MAIN_FILE = "data/processed_dataset.csv"
 
