@@ -52,6 +52,7 @@ def choose_k(X, kmin, kmax):
         sil = silhouette_score(X_16d, labels)
         try:
             dbi = davies_bouldin_score(X_16d, labels)
+
         except:
             dbi = np.nan
         rows.append({"k": k, "silhouette": sil, "davies_bouldin": dbi})
@@ -72,6 +73,19 @@ def save_plots(metrics, X, labels, outdir):
     plt.tight_layout()
     plt.savefig(outdir / "silhouette_word2vec.png", dpi=150)
     plt.close()
+    
+    Xv = X if X.shape[0] <= 3000 else X[:3000]
+    lv = labels[:Xv.shape[0]]
+    xy = PCA(n_components=2, random_state=42).fit_transform(Xv)
+    plt.figure(figsize=(6,5))
+    scatter = plt.scatter(xy[:,0], xy[:,1], c=lv, s=10, cmap="viridis")
+    plt.title("Clusters (Word2Vec + PCA 2D)")
+    plt.xlabel("PC1")
+    plt.ylabel("PC2")
+    plt.legend(*scatter.legend_elements(), title="Clusters")
+    plt.tight_layout()
+    plt.savefig(outdir / "pca_word2vec.png", dpi=150)
+    plt.close()
 
 def main():
     # Main process
@@ -88,6 +102,7 @@ def main():
 
     print("Preparing sentences for Word2Vec...")
     sentences = [simple_preprocess(t) for t in df['text']]
+
 
     print("Training Word2Vec model...")
     model = train_word2vec(sentences, size=args.vector_size)
