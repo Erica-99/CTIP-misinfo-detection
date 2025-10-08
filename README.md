@@ -45,6 +45,7 @@ Now install requirements:
 ```
 pip install -r requirements.txt
 ```
+Note it may take a while to install these, especially if you do not have many of the libraries cached. Jupyter in particular has a very large amount of dependencies and can take a while to install.
 
 ## Data Processing
 All data processing is done in the `loading_datasets.ipynb` Jupyter notebook. Halfway down the notebook there is a cell which loads a csv dataset into memory right before the cell where all the processing happens. If you want to perform additional processing on the dataset, direct the loading function to your dataset's filepath and then add whatever processing functions you like to the following cell. 
