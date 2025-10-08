@@ -1,3 +1,6 @@
+# Sahan's original script for K-means clustering and the source of the K vs Silhouette score graph.
+# Simplified and adapted for consistency by Erica.
+
 import csv
 csv.field_size_limit(10**9)
 
@@ -13,32 +16,10 @@ from sklearn.cluster import MiniBatchKMeans
 from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score, davies_bouldin_score
 import matplotlib.pyplot as plt
+import umap
 plt.switch_backend("Agg")
 
-# Detect text column automatically
-TEXT_COLS = (
-    "news_content","content","text","article_text","body","full_text",
-    "clean_content","content_text","news","title","tweet"
-)
-
-def pick_first(cols, candidates):
-    return next((c for c in candidates if c in cols), None)
-
-def load_df(path, text_col):
-    # Load and clean dataset
-    df = pd.read_csv(path, encoding="utf-8", engine="python")
-    if not text_col:
-        text_col = pick_first(df.columns, TEXT_COLS)
-        if not text_col:
-            raise KeyError(f"No text column found. Tried {TEXT_COLS}.")
-    df = df.dropna(subset=[text_col]).copy()
-    df[text_col] = df[text_col].astype(str).str.strip()
-    df = df[df[text_col] != ""].reset_index(drop=True)
-    if df.empty:
-        raise ValueError("Dataset is empty after removing blanks.")
-    return df, text_col
-
-def train_word2vec(sentences, size=100):
+def train_word2vec(sentences, size=128):
     # Train Word2Vec model
     model = Word2Vec(sentences, vector_size=size, window=5, min_count=2, workers=4, sg=1)
     return model
@@ -56,15 +37,22 @@ def vectorize_texts(model, sentences):
 
 def choose_k(X, kmin, kmax):
     # Run MiniBatchKMeans for different k values
+    
+    print("Running dimension reduction down to 16 dimensions")
+    X_16d = umap.UMAP(n_components=16, n_neighbors=15, min_dist=0.1, n_jobs=-1, metric='euclidean').fit_transform(X)
+    X_16d = np.nan_to_num(X_16d)
+    
     rows, best_sil, best_k, best_labels = [], -1, None, None
     print(f"Running K-Means for k={kmin}..{kmax} using Word2Vec vectors...")
 
     for k in range(kmin, kmax + 1):
-        km = MiniBatchKMeans(n_clusters=k, random_state=42, batch_size=512)
-        labels = km.fit_predict(X)
-        sil = silhouette_score(X, labels)
+        print(f"Testing k={k}")
+        km = MiniBatchKMeans(n_clusters=k, random_state=17, batch_size=512)
+        labels = km.fit_predict(X_16d)
+        sil = silhouette_score(X_16d, labels)
         try:
-            dbi = davies_bouldin_score(X, labels)
+            dbi = davies_bouldin_score(X_16d, labels)
+
         except:
             dbi = np.nan
         rows.append({"k": k, "silhouette": sil, "davies_bouldin": dbi})
@@ -79,13 +67,13 @@ def save_plots(metrics, X, labels, outdir):
 
     plt.figure(figsize=(6,4))
     plt.plot(metrics["k"], metrics["silhouette"], marker="o", color="orange")
-    plt.title("Silhouette Score vs K (Word2Vec)")
+    plt.title("Silhouette Score vs K-value")
     plt.xlabel("k")
     plt.ylabel("Silhouette Score")
     plt.tight_layout()
     plt.savefig(outdir / "silhouette_word2vec.png", dpi=150)
     plt.close()
-
+    
     Xv = X if X.shape[0] <= 3000 else X[:3000]
     lv = labels[:Xv.shape[0]]
     xy = PCA(n_components=2, random_state=42).fit_transform(Xv)
@@ -102,24 +90,24 @@ def save_plots(metrics, X, labels, outdir):
 def main():
     # Main process
     ap = argparse.ArgumentParser()
-    ap.add_argument("--input", default="processed_dataset.csv")
-    ap.add_argument("--text-col", default=None)
-    ap.add_argument("--outdir", default="outputs")
-    ap.add_argument("--vector-size", type=int, default=100)
+    ap.add_argument("--input", default="data/processed_dataset.csv")
+    ap.add_argument("--outdir", default="kmeans-out")
+    ap.add_argument("--vector-size", type=int, default=128)
     ap.add_argument("--k-min", type=int, default=2)
-    ap.add_argument("--k-max", type=int, default=8)
+    ap.add_argument("--k-max", type=int, default=30)
     args = ap.parse_args()
 
-    df, text_col = load_df(Path(args.input), args.text_col)
-    print(f"Loaded {len(df)} rows; text column = '{text_col}'")
+    df = pd.read_csv("data/processed_dataset.csv", encoding='utf-8', index_col=0)
+    print(f"Loaded {len(df)} rows.")
 
     print("Preparing sentences for Word2Vec...")
-    sentences = [simple_preprocess(t) for t in df[text_col]]
+    sentences = [simple_preprocess(t) for t in df['text']]
+
 
     print("Training Word2Vec model...")
     model = train_word2vec(sentences, size=args.vector_size)
 
-    print("Vectorizing sentences...")
+    print("Vectorizing documents...")
     X = vectorize_texts(model, sentences)
 
     metrics, best_k, labels = choose_k(X, args.k_min, args.k_max)

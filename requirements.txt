@@ -1,0 +1,17 @@
+beautifulsoup4==4.13.5
+gensim==4.3.3
+ipython==8.12.3
+joblib==1.5.2
+jupyter==1.1.1
+matplotlib==3.10.6
+nltk==3.9.1
+numpy==1.26.4
+pandas==2.3.2
+plotly==6.3.0
+scikit_learn==1.7.1
+scipy==1.13.1
+seaborn==0.13.2
+umap_learn==0.5.9.post2
+Unidecode==1.4.0
+wordcloud==1.9.4
+dbcv @ git+https://github.com/FelSiq/DBCV
